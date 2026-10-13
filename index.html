@@ -17,6 +17,7 @@
   --shadow:0 1px 2px rgba(16,40,24,.05),0 4px 16px rgba(16,40,24,.06);
   --heat-base:#ffffff;
   --multi:#d9730d; --multi-soft:#fdf0e3;
+  --lote:#d4a106; --lote-soft:#fff6d1; --lote-ink:#8a6400;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -28,6 +29,7 @@
     --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25);
     --heat-base:#142019;
     --multi:#f0a14a; --multi-soft:#3a2a17;
+    --lote:#e8c547; --lote-soft:#3a3214; --lote-ink:#f2d675;
   }
 }
 :root[data-theme="dark"]{
@@ -39,6 +41,7 @@
   --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25);
   --heat-base:#142019;
   --multi:#f0a14a; --multi-soft:#3a2a17;
+  --lote:#e8c547; --lote-soft:#3a3214; --lote-ink:#f2d675;
 }
 *{box-sizing:border-box}
 html,body{margin:0}
@@ -102,6 +105,10 @@ select:focus,input:focus{outline:2px solid var(--accent);outline-offset:1px}
 .incmulti small{font-weight:500;color:var(--muted);font-size:11.5px}
 .incmulti.on{border-color:var(--multi);background:var(--multi-soft)}
 .incmulti.disabled{opacity:.55;cursor:not-allowed}
+.incmulti.lote:hover{border-color:var(--lote)}
+.incmulti.lote input{accent-color:var(--lote)}
+.incmulti.lote.on{border-color:var(--lote);background:var(--lote-soft)}
+.tag-lote{font-size:10px;font-weight:700;color:var(--lote-ink);background:var(--lote-soft);border:1px solid var(--lote);border-radius:5px;padding:0 4px;margin-left:6px}
 .tag-multi{font-size:10px;font-weight:700;color:var(--multi);border:1px solid var(--multi);border-radius:5px;padding:0 4px;margin-left:6px}
 .btn-ghost{border:1px solid var(--border);background:transparent;color:var(--muted);border-radius:10px;padding:9px 14px;font:600 13px Inter,sans-serif;cursor:pointer}
 .btn-ghost:hover{color:var(--text);border-color:var(--accent)}
@@ -292,8 +299,11 @@ footer a{color:var(--accent)}
     <div class="field"><label>Variedades sembradas</label><div class="ms" id="msVar"></div></div>
     <div class="field"><label>Ingenieros</label><div class="ms" id="msTec"></div></div>
     <div class="field"><label>Campos</label><div class="ms" id="msCampo"></div></div>
-    <label class="incmulti" id="incWrap" title="Suma los datos de la pestaña «Campos con mas de 1 variedad» de la Google Sheet">
-      <input type="checkbox" id="incMulti"><span>Incluir campos con más de una variedad</span><small id="incInfo"></small>
+    <label class="incmulti" id="inc-campos">
+      <input type="checkbox" data-extra="campos"><span>Incluir campos con más de una variedad</span><small></small>
+    </label>
+    <label class="incmulti lote" id="inc-lotes">
+      <input type="checkbox" data-extra="lotes"><span>Incluir LOTES con más de una variedad</span><small></small>
     </label>
     <button class="btn-ghost" id="btnReset">Limpiar filtros</button>
   </div>
@@ -356,7 +366,6 @@ const SHEET_ID = '1Ce4_krjzAWKhRHa7BBJt6fUs9JZn6FXTwB9RcP3Av4M';
 const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit?usp=sharing`;
 const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
 const REFRESH_MS = 60000;
-const MULTI_SHEET = 'Campos con mas de 1 variedad'; // pestaña con los campos de más de una variedad
 const HAS_TOTALES = 30878; // hectáreas totales de la campaña (para el % trillado)
 const MIN_HAS = 50; // hectáreas trilladas mínimas para considerar una variedad como ganadora
 const SNAPSHOT = "NOMBRE DEL CAMPO,LOCALIDAD,ZONA,HAS NETAS,HAS TRILLADAS,KG RINDE HA,TECNICO,VARIEDAD SEMBRADA,VARIEDAD COSECHADA\nABATEDAGA 25-26,Del campillo - Villa Valeria,Del campillo - Villa Valeria,56.08,56.08,\"2,096.31\",\"MARCIANO, MATIAS\",EC 394-2,MANI HO EL CARMEN C/4CPA\nALESSANDRETTI 25-26,LA CARLOTA,La Carlota,71.50,71.50,\"1,887.68\",\"ZARATE, DIEGO\",EC MAX-1,EC MAX-2\nANGELI 25-26,SAMPACHO,Sampacho - Suco,60.12,60.12,\"2,390.44\",\"PRINCIPI, GABRIEL\",GR-2,MANI HO EL CARMEN C/4CPA\nBELTRAMINO 25-26,GRAL. SOLER,La Cautiva - Levalle,121.68,121.68,\"3,347.12\",\"INGOGLIA, PABLO\",EC 394-2,EC 394-2\nBONSESSI 25-26,SAMPACHO,Sampacho - Suco,66.09,66.09,\"2,880.28\",\"PRINCIPI, GABRIEL\",GR-2,MANI HO EL CARMEN\nBORACHIA 25-26,VICU\u00d1A MACKENNA,Washington - Villa sarmiento,56.02,56.02,\"2,884.15\",\"INGOGLIA, PABLO\",GR-2,GR-2\nBOURBON 25-26,MATTALDI,Del campillo - Villa Valeria,80.10,80.10,\"3,129.43\",\"ZARATE, DIEGO\",EC 394-2,MA 757-3\nCAMPICHUELO 25-26,HIPOLITO BOUCHARD,Huanchilla - Pacheco de melo,206.35,206.35,\"3,689.07\",\"PERROTTA, ADRIAN\",MA 757-3,MANI HO DRS\nCAMPRA-ZANOTTO,Del campillo - Villa Valeria,Del campillo - Villa Valeria,97.81,97.81,\"3,666.68\",\"GALETTO, MARTIN\",MA 88-3,MANI HO DRS C/4CPA\nCHIAPELLO HNOS 25-26,COLONIA EL NOY,Huanchilla - Pacheco de melo,49.99,49.99,\"3,310.42\",\"ZARATE, DIEGO\",MA 757-3,MANI HO DRS\nCOLONIA NUEVA 25-26,LABOULAYE,Huanchilla - Pacheco de melo,77.92,77.92,\"5,287.90\",\"INGOGLIA, PABLO\",EC 394-2,MANI HO EL CARMEN C/4CPA\nCORAGLIO 25-26,Del campillo - Villa Valeria,Del campillo - Villa Valeria,84.01,84.01,\"4,395.50\",\"MARCIANO, MATIAS\",EC 394-2,EC 394-2\nDANDREA 25-26,Sampacho - Suco,Sampacho - Suco,97.69,97.69,\"2,642.05\",\"REINERO, CLARA\",GR-2,MANI HO EL CARMEN C/4CPA\nDANIELLE 25-26,Del campillo - Villa Valeria,Del campillo - Villa Valeria,52.45,52.45,\"2,826.98\",\"MARCIANO, MATIAS\",EC 394-2,MANI HO EL CARMEN C/4CPA\nDEFACCI 25-26,Sampacho - Suco,Sampacho - Suco,97.84,97.84,\"2,500.98\",\"PRINCIPI, GABRIEL\",GR-2,GR-2\nDON ALFREDO 25-26,Del campillo - Villa Valeria,Del campillo - Villa Valeria,168.23,168.23,\"4,446.32\",\"MARCIANO, MATIAS\",EC 394-2,EC 394-2\nDON EDUARDO DE DAGATTI 25-26,LA ANGELINA,SAN LUIS,615.00,615.00,\"2,808.56\",\"MORENO, AGUSTIN\",MA 88-3,MANI HO DRS C/4CPA\nDON HORACIO 25-26,SAMPACHO,Sampacho - Suco,372.90,372.90,\"3,284.28\",\"PRINCIPI, GABRIEL\",EC 394-2,MANI HO EL CARMEN\nDON MARCELINO 25-26,VILLA VALERIA,Del campillo - Villa Valeria,223.34,223.34,\"2,635.98\",\"CAZZOLA, NICOLAS\",MA 88-3,MA 88-3\nDON MAXIMO 25-26,PINCEN,Cba Sur - Ranqueles - Villa Huidobro - Huinca,94.38,94.38,\"2,918.56\",\"MORENO, AGUSTIN\",GR-2,MANI HO EL CARMEN C/4CPA\nDON NESTOR 25-26,CORONEL MOLDES,Moldes - Chajan,111.82,111.82,\"4,774.63\",\"BARANDA, ANDRES\",MA 757-3,MA 757-3\nDON PEDRO (ETCHEPARE),VILLA HUIDOBRO,Del campillo - Villa Valeria,149.62,149.62,\"4,042.73\",\"REINERO, CLARA\",GR-2,GR-3\nDON PEDRO 25-26,VILLA HUIDOBRO,Del campillo - Villa Valeria,185.34,185.34,\"3,033.32\",\"REINERO, CLARA\",MA 88-3,MANI HO DRS C/4CPA\nEL CASTILLO 25-26,HUINCA RENANCO,Cba Sur - Ranqueles - Villa Huidobro - Huinca,222.25,222.25,\"4,644.88\",\"SOSA, HUGO\",MA 757-3,MANI HO DRS C/4CPA\nEL CHELIBO 25-26,WASHINGTON,Washington - Villa sarmiento,89.83,89.83,\"3,834.11\",\"BARANDA, ANDRES\",MA 757-3,MANI HO DRS C/4CPA\nEL CHILO 25-26,SAMPACHO,Sampacho - Suco,123.14,123.14,\"3,461.46\",\"PRINCIPI, GABRIEL\",GR-2,GR-2\nEL MARCELITO 25-26,SAN JOAQUIN,Huanchilla - Pacheco de melo,73.82,73.82,\"4,153.44\",\"ZARATE, DIEGO\",MA 88-3,MA 88-3\nEL MATACO 25-26,Del campillo - Villa Valeria,Del campillo - Villa Valeria,163.62,163.62,\"3,750.54\",\"GALETTO, MARTIN\",EC 394-2,EC 394-2\nEL NARANJITO 25-26,LA CARLOTA,La Carlota,175.00,175.00,\"2,018.46\",\"ZARATE, DIEGO\",EC 394-2,EC 394-2\nEL NUEVO CAMPO 25-26,HUINCA RENANCO,Cba Sur - Ranqueles - Villa Huidobro - Huinca,149.27,149.27,\"4,613.30\",\"SOSA, HUGO\",MA 88-3,MANI HO DRS C/4CPA\nEL REPECHO 25-26,SOVEN,SAN LUIS,997.75,997.75,\"2,254.81\",\"CAZZOLA, NICOLAS\",MA 88-3,MANI HO DRS C/4CPA\nEL RETIRO 25-26,Del campillo - Villa Valeria,Del campillo - Villa Valeria,248.97,248.97,\"3,379.65\",\"GALETTO, MARTIN\",EC 394-2,EC 394-2\nEL SILENCIO 25-26,VILLA VALERIA,Del campillo - Villa Valeria,160.82,160.82,\"2,098.64\",\"CAZZOLA, NICOLAS\",MA 88-3,MANI HO DRS\nEL TORO 25-26,Del campillo - Villa Valeria,Del campillo - Villa Valeria,362.37,362.37,\"3,393.69\",\"GALETTO, MARTIN\",MA 88-3,MANI HO DRS C/4CPA\nFERRARI OESTE 25-26,UCACHA,La Carlota,44.79,44.79,\"2,321.03\",\"PRINCIPI, GABRIEL\",MA 757-3,MANI HO DRS\nFERRERO 25-26,LA CARLOTA,La Carlota,116.98,116.98,\"1,781.95\",\"ZARATE, DIEGO\",MA 757-3,MANI HO DRS C/4CPA\nFLOR DEL CAMPO II 25-26,SAN SEVERO,San Severo - Canals,284.62,284.62,\"1,875.78\",\"INGOGLIA, PABLO\",GR-2,GR-2\nFORESTELLO 25-26,VICU\u00d1A MACKENNA,Washington - Villa sarmiento,105.02,105.02,\"2,792.23\",\"INGOGLIA, PABLO\",EC 394-2,MANI HO EL CARMEN C/4CPA\nGARELLO 25-26,Del campillo - Villa Valeria,Del campillo - Villa Valeria,144.05,144.05,\"1,826.94\",\"MARCIANO, MATIAS\",EC 394-2,MANI HO EL CARMEN C/4CPA\nGONZALEZ 25-26,Del campillo - Villa Valeria,Del campillo - Villa Valeria,137.13,137.13,\"3,915.74\",\"REINERO, CLARA\",EC 394-2,EC 394-2\nGRASSI 25-26,SAMPACHO,Sampacho - Suco,163.45,163.45,\"2,827.97\",\"PRINCIPI, GABRIEL\",EC MAX-1,EC MAX-2\nLA ALICIA 25-26,VILLA VALERIA,Del campillo - Villa Valeria,97.24,97.24,\"1,684.34\",\"CAZZOLA, NICOLAS\",MA 88-3,MANI HO DRS C/4CPA\nLA ANITA 25-26,Del campillo - Villa Valeria,Del campillo - Villa Valeria,381.07,381.07,\"1,379.33\",\"GALETTO, MARTIN\",GR-2,MANI HO EL CARMEN C/4CPA\nLA CANDELARIA (BONADEO CARLOS) 25-26,HUANCHILLA,Huanchilla - Pacheco de melo,46.73,46.73,\"2,148.36\",\"INGOGLIA, PABLO\",EC MAX-1,EC MAX-2\nLA CAUTIVA 25-26,LA CAUTIVA,La Cautiva - Levalle,147.66,147.66,\"3,998.39\",\"INGOGLIA, PABLO\",EC 394-2,EC 394-2\nLA CELIA 25-26,CHUCUL,Las Higueras,108.07,108.07,\"3,005.01\",\"PRINCIPI, GABRIEL\",EC 394-2,EC 394-2\nLA CERCANIA 25-26,SAMPACHO,Sampacho - Suco,153.72,153.72,\"2,904.53\",\"PRINCIPI, GABRIEL\",EC 394-2,MANI HO EL CARMEN\nLA DOROTEA 25-26,VILLA VALERIA,Del campillo - Villa Valeria,190.82,190.82,\"4,214.44\",\"CAZZOLA, NICOLAS\",MA 88-3,MANI HO DRS C/4CPA\nLA ELEONORA 25-26,GENERAL VILLEGAS,BUENOS AIRES,293.29,293.29,\"3,788.26\",\"PERROTTA, ADRIAN\",MA 757-3,MANI HO DRS\nLA ELVIRA 25-26,VILLA VALERIA,Del campillo - Villa Valeria,146.50,146.50,\"3,550.18\",\"CAZZOLA, NICOLAS\",MA 88-3,MANI HO DRS C/4CPA\nLA EMILIA 25-26,BULNES,Moldes - Chajan,154.10,154.10,\"1,458.86\",\"MARCIANO, MATIAS\",MA 88-3,MANI HO DRS C/4CPA\nLA EMPACADA 25-26,HILARIO LAGOS,LA PAMPA,173.56,173.56,\"5,216.69\",\"ZARATE, DIEGO\",MA 88-3,MA 88-3\nLA ESPERANZA (NICOLA ) 25-26,HUANCHILLA,Huanchilla - Pacheco de melo,69.08,69.08,\"4,716.33\",\"INGOGLIA, PABLO\",EC 394-2,EC 394-2\nLA ESTEFANIA 25-26,LA CARLOTA,La Carlota,132.91,132.91,\"2,896.13\",\"ZARATE, DIEGO\",MA 757-3,MANI HO DRS C/4CPA\nLA LAGUNA 25-26,VILLA VALERIA,Del campillo - Villa Valeria,146.49,146.49,\"4,192.44\",\"CAZZOLA, NICOLAS\",MA 88-3,MANI HO DRS C/4CPA\nLA LEONA 25-26,CORONEL MOLDES,Moldes - Chajan,171.08,171.08,\"2,902.07\",\"BARANDA, ANDRES\",EC 394-2,MANI HO EL CARMEN\nLA LOMA 25-26,CORONEL MOLDES,Moldes - Chajan,126.42,126.42,\"1,110.75\",\"MARCIANO, MATIAS\",MA 88-3,MANI HO DRS C/4CPA\nLA MARIA (DE MORELLI),RIO QUINTO,Washington - Villa sarmiento,65.89,65.89,\"3,742.50\",\"INGOGLIA, PABLO\",MA 02,MANI HO DRS C/4CPA\nLA MARIA 25-26,RANQUELES SUR,Cba Sur - Ranqueles - Villa Huidobro - Huinca,\"1,182.39\",\"1,182.39\",\"3,991.92\",\"SOSA, HUGO\",MA 757-3,MANI HO DRS\nLA MARIA ELISA 25-26,SANTA ELEODORA,BUENOS AIRES,55.14,55.14,\"3,006.09\",\"PERROTTA, ADRIAN\",MA 757-3,MA 757-3\nLA MARIA TAZZIOLI 25-26,CORONEL MOLDES,Moldes - Chajan,121.47,121.47,\"3,575.02\",\"BARANDA, ANDRES\",MA 757,MA 757-2\nLA MOROCHA CHICA 25-26,LA ANGELINA,SAN LUIS,95.40,95.40,\"3,618.85\",\"MORENO, AGUSTIN\",MA 88-3,MANI HO DRS C/4CPA\nLA PAZ 25-26,SAMPACHO,Sampacho - Suco,136.23,136.23,\"2,564.75\",\"PRINCIPI, GABRIEL\",GR-2,MANI HO EL CARMEN\nLA PELITA (ALLIONE) 25-26,MATTALDI,Del campillo - Villa Valeria,77.15,77.15,\"3,830.24\",\"ZARATE, DIEGO\",MA 88-3,MA 88-3\nLA PELITA (ZIZZIAS) 25-26,MATTALDI,Del campillo - Villa Valeria,86.00,86.00,\"3,895.23\",\"ZARATE, DIEGO\",MA 88-3,MA 88-3\nLAS CAROLINAS 25-26,SOVEN,SAN LUIS,434.41,434.41,\"2,361.82\",\"MORENO, AGUSTIN\",MA 88-3,MANI HO DRS C/4CPA\nLAS ENSENADAS 25-26,LAS ENSENADAS,Sampacho - Suco,101.68,101.68,\"1,956.93\",\"REINERO, CLARA\",EC 394-2,MANI HO DRS C/4CPA\nLAS TRES HERMANAS 25-26,Del campillo - Villa Valeria,Del campillo - Villa Valeria,98.18,98.18,\"4,201.16\",\"GALETTO, MARTIN\",MA 88-3,MA 88-3\nLEIGGENER 25-26,UCACHA,La Carlota,101.34,101.34,\"3,868.87\",\"PRINCIPI, GABRIEL\",MA 757-3,MANI HO DRS C/4CPA\nLOMA BLANCA 25-26,CHAJAN,Moldes - Chajan,198.57,198.57,\"1,700.49\",\"BARANDA, ANDRES\",EC 394-2,MANI HO EL CARMEN\nLOMA DE PIEDRA 25-26,CHAJAN,Moldes - Chajan,242.98,242.98,\"2,551.77\",\"BARANDA, ANDRES\",EC 394-2,MANI HO EL CARMEN\nLOS CARMENES 25-26,VILLA VALERIA,Del campillo - Villa Valeria,254.75,254.75,\"3,251.04\",\"CAZZOLA, NICOLAS\",MA 88-3,MANI HO DRS C/4CPA\nLUANMAR 25-26,HOLMBERG,Sampacho - Suco,216.99,216.99,\"2,263.70\",\"PRINCIPI, GABRIEL\",MA 757-3,MANI HO DRS\nMALVINAS 25-26,SAN JOAQUIN,Huanchilla - Pacheco de melo,92.71,92.71,\"2,416.09\",\"ZARATE, DIEGO\",MA 757-3,MA 757-3\nMANZI 25-26,PAUNERO,Washington - Villa sarmiento,151.93,151.93,\"4,401.08\",\"BARANDA, ANDRES\",EC 394-2,MANI HO EL CARMEN C/4CPA\nMARIA ANTONIA 25-26,VILLA VALERIA,Del campillo - Villa Valeria,346.74,346.74,\"4,183.67\",\"CAZZOLA, NICOLAS\",MA 88-3,GR-1\nMASPERO 25-26,LAS VERTIENTES,Sampacho - Suco,103.27,103.27,\"3,043.22\",\"PRINCIPI, GABRIEL\",GR-2,GR-2\nMATEODA I 25-26,BULNES,Moldes - Chajan,134.55,134.55,\"1,969.26\",\"MARCIANO, MATIAS\",MA 88-3,MANI HO EL CARMEN\nMATEODA II 25-26,BULNES,Moldes - Chajan,72.22,72.22,\"1,521.30\",\"MARCIANO, MATIAS\",GR-2,MANI HO EL CARMEN C/4CPA\nMAURIZIO 25-26,BULNES,Moldes - Chajan,84.96,84.96,\"1,903.43\",\"MARCIANO, MATIAS\",GR-2,MANI HO EL CARMEN C/4CPA\nMOREIRA 25-26,LA CAROLINA EL POTOSI,Sampacho - Suco,183.83,183.83,\"2,072.10\",\"PRINCIPI, GABRIEL\",EC 394-2,MANI HO EL CARMEN\nNICOLA 25-26,Del campillo - Villa Valeria,Del campillo - Villa Valeria,114.86,114.86,\"3,248.78\",\"MARCIANO, MATIAS\",EC 394-2,MANI HO EL CARMEN C/4CPA\nNIRE ECHEA (URRUTIA) 25-26,MELO,Huanchilla - Pacheco de melo,118.76,118.76,\"4,426.60\",\"PERROTTA, ADRIAN\",MA 757-3,MANI HO DRS\nNUCCIO 25-26,HUANCHILLA,Huanchilla - Pacheco de melo,41.45,41.45,\"2,923.67\",\"INGOGLIA, PABLO\",EC 394-2,EC 394-2\nPALOTTI 25-26,Sampacho - Suco,Sampacho - Suco,115.40,115.40,\"3,641.86\",\"REINERO, CLARA\",GR-2,MANI HO EL CARMEN C/4CPA\nPANCHO CHICO 25-26 (PASCUAL NESTOR),Del campillo - Villa Valeria,Del campillo - Villa Valeria,97.41,97.41,\"3,969.40\",\"GALETTO, MARTIN\",GR-2,GR-2\nPEQUEN CHICO 25-26,VILLA VALERIA,Del campillo - Villa Valeria,127.18,127.18,\"3,943.93\",\"CAZZOLA, NICOLAS\",MA 88-3,MANI HO DRS C/4CPA\nPICCA 25-26,Del campillo - Villa Valeria,Del campillo - Villa Valeria,113.93,113.93,\"3,403.91\",\"MARCIANO, MATIAS\",EC 394-2,MANI HO EL CARMEN C/4CPA\nPINAMONTTI 25-26,SAMPACHO,Sampacho - Suco,96.06,96.06,\"3,442.29\",\"PRINCIPI, GABRIEL\",GR-2,MANI HO EL CARMEN\nPINCIROLI 25-26,LA LAGUNILLA,Sampacho - Suco,67.39,67.39,\"1,630.55\",\"PRINCIPI, GABRIEL\",GR-2,MANI HO EL CARMEN\nPOZO GRANDE 25-26,Sampacho - Suco,Sampacho - Suco,164.36,164.36,\"2,079.25\",\"REINERO, CLARA\",GR-2,MANI HO DRS C/4CPA\nRAMONDA 25-26,Del campillo - Villa Valeria,Del campillo - Villa Valeria,81.69,81.69,\"3,848.89\",\"MARCIANO, MATIAS\",EC 394-2,EC 394-2\nROMAGNOLI 25-26,RIO CUARTO,Las Higueras,193.44,193.44,\"3,653.25\",\"PRINCIPI, GABRIEL\",EC 394-2,MANI HO EL CARMEN C/4CPA\nROMAGNOLI AUTOVIA 25-26,RIO CUARTO,Las Higueras,32.84,32.84,\"3,091.81\",\"PRINCIPI, GABRIEL\",EC 394-2,MANI HO EL CARMEN\nRUCA MAY II 25-26,HUINCA RENANCO,Cba Sur - Ranqueles - Villa Huidobro - Huinca,255.86,255.86,\"3,890.14\",\"MORENO, AGUSTIN\",MA 757-3,MANI HO DRS C/4CPA\nSAN AGUSTIN FORTUNA 25-26,RANQUELES,Cba Sur - Ranqueles - Villa Huidobro - Huinca,206.40,206.40,\"4,508.93\",\"SOSA, HUGO\",MA 757-3,MANI HO DRS C/4CPA\nSAN EDUARDO 25-26,GENERAL LEVALLE,La Cautiva - Levalle,398.52,398.52,\"2,809.47\",\"ZARATE, DIEGO\",MA 757-3,MANI HO DRS\nSAN FRANCISCO 25-26,VILLA SARMIENTO,Washington - Villa sarmiento,117.22,117.22,\"2,536.77\",\"INGOGLIA, PABLO\",GR-2,GR-2\nSAN JUAN (ARANGOA) 25-26,Del campillo - Villa Valeria,Del campillo - Villa Valeria,147.74,147.74,\"3,430.95\",\"GALETTO, MARTIN\",GR-2,GR-2\nSAN JUAN (ITURRIOZ) 25-26,WASHINGTON,Washington - Villa sarmiento,111.21,111.21,\"3,929.14\",\"GALETTO, MARTIN\",EC MAX-1,EC MAX-2\nSAN MARTIN (GASTALDI) 25-26,SANTA CLARA,Huanchilla - Pacheco de melo,159.76,159.76,\"2,710.42\",\"ZARATE, DIEGO\",EC 394-2,EC 394-2\nSAN MARTIN 25-26,VILLA SARMIENTO,Washington - Villa sarmiento,219.57,219.57,\"3,194.58\",\"GALETTO, MARTIN\",EC 394-2,MANI HO EL CARMEN\nSAN MIGUEL 25-26,Del campillo - Villa Valeria,Del campillo - Villa Valeria,50.80,50.80,\"2,481.32\",\"GALETTO, MARTIN\",MA 88-3,MA 88-3\nSAN PATRICIO (BEACON) 25-26,LA CAROLINA EL POTOSI,Sampacho - Suco,124.39,124.39,\"1,966.36\",\"PRINCIPI, GABRIEL\",EC 394-2,MANI HO EL CARMEN\nSANTA ANA BORGHI 25-26,CORONEL MOLDES,Moldes - Chajan,106.76,106.76,\"1,592.04\",\"BARANDA, ANDRES\",EC 394-2,MANI HO EL CARMEN C/4CPA\nSANTA ANGELA 25-26,CORONEL MOLDES,Moldes - Chajan,115.15,115.15,\"3,611.87\",\"BARANDA, ANDRES\",EC 394-2,MANI HO EL CARMEN\nSANTA MAMA INES 25-26,SERRANO,Huanchilla - Pacheco de melo,98.66,98.66,\"6,028.31\",\"PERROTTA, ADRIAN\",MA 757-3,MANI HO DRS C/4CPA\nTRES SOCIOS-GEUNA-VICENTE 25-26,COLONIA EL NOY,Huanchilla - Pacheco de melo,135.45,135.45,\"1,611.94\",\"ZARATE, DIEGO\",MA 757-3,MANI HO DRS\nVALETTI 25-26,ALEJANDRO ROCA,La Carlota,116.77,116.77,\"1,790.64\",\"PRINCIPI, GABRIEL\",MA 757-3,MANI HO DRS\nVANUCCI/LAGARDE 25-26,BULNES,Moldes - Chajan,132.48,132.48,831.26,\"MARCIANO, MATIAS\",EC 394-2,MANI HO EL CARMEN C/4CPA\nVICENTE 25-26,COLONIA EL NOY,Huanchilla - Pacheco de melo,66.40,66.40,\"2,137.21\",\"ZARATE, DIEGO\",MA 757-3,MANI HO DRS C/4CPA\nYANQUETRUZ 25-26,VILLA VALERIA,Del campillo - Villa Valeria,309.51,309.51,\"4,058.35\",\"CAZZOLA, NICOLAS\",MA 88-3,MANI HO DRS C/4CPA\n";
@@ -383,8 +392,8 @@ const nf0 = new Intl.NumberFormat('es-AR',{maximumFractionDigits:0});
 const nf1 = new Intl.NumberFormat('es-AR',{maximumFractionDigits:1,minimumFractionDigits:1});
 const nf2 = new Intl.NumberFormat('es-AR',{maximumFractionDigits:2,minimumFractionDigits:2});
 
-let BASE = [], MULTI = [], multiErr = '', DATA = [], VARS = [], ZONES = [], TECS = [], COLOR = {};
-const state = {incMulti:false, zonas:[], vars:[], tecs:[], campos:[], search:'', sort:{k:'rinde', dir:-1}, source:'', last:null};
+let BASE = [], DATA = [], VARS = [], ZONES = [], TECS = [], COLOR = {};
+const state = {incMulti:false, incLotes:false, zonas:[], vars:[], tecs:[], campos:[], search:'', sort:{k:'rinde', dir:-1}, source:'', last:null};
 
 /* ---------- utilidades ---------- */
 const norm = s => String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
@@ -509,34 +518,42 @@ async function load(manual){
   btn.classList.remove('spin');
   composeData(); prepare(); render();
 }
-// Pestaña "Campos con mas de 1 variedad": se lee aparte y se suma solo si el tilde está activo
-async function loadMulti(){
+// Pestañas extra de la Google Sheet: se leen aparte y se suman solo si su tilde está activo
+const EXTRAS = [
+  {id:'campos', sheet:'Campos con mas de 1 variedad', key:'incMulti', store:'tablero-incmulti', unit:'campos',
+   tag:'+1 VAR', tagTitle:'Campo con más de una variedad', cls:'tag-multi', rows:[], err:''},
+  {id:'lotes',  sheet:'Lotes con mas de 1 variedad',  key:'incLotes', store:'tablero-inclotes', unit:'campos',
+   tag:'LOTE MIXTO', tagTitle:'Lote con más de una variedad', cls:'tag-lote', rows:[], err:''}
+];
+async function loadExtra(x){
   let rows = null, why = '';
-  try { rows = await fetchCSV(MULTI_SHEET); } catch(e){ why = e.message; }
-  if (!rows){ try { rows = await fetchJSONP(MULTI_SHEET); } catch(e){ why += (why?' · ':'') + e.message; } }
+  try { rows = await fetchCSV(x.sheet); } catch(e){ why = e.message; }
+  if (!rows){ try { rows = await fetchJSONP(x.sheet); } catch(e){ why += (why?' · ':'') + e.message; } }
   try{
     if (!rows) throw new Error(why || 'sin respuesta');
     const m = buildData(rows);
     // si Google devolvió la pestaña principal (nombre no encontrado), no la sumamos dos veces
     const baseSet = new Set(BASE.map(d=>d.campo+'|'+d.sem+'|'+d.has));
-    if (m.length && m.every(d=>baseSet.has(d.campo+'|'+d.sem+'|'+d.has))) throw new Error('no se encontró la pestaña «'+MULTI_SHEET+'»');
-    MULTI = m.map(d=>({...d, multi:true})); multiErr = '';
+    if (m.length && m.every(d=>baseSet.has(d.campo+'|'+d.sem+'|'+d.has))) throw new Error('no se encontró la pestaña «'+x.sheet+'»');
+    x.rows = m.map(d=>({...d, extra:x.id})); x.err = '';
   }catch(e){
-    console.warn('Pestaña de campos con más de una variedad:', e);
-    multiErr = e.message;  // se conservan los últimos datos leídos, si los hay
+    console.warn('Pestaña «'+x.sheet+'»:', e);
+    x.err = e.message;  // se conservan los últimos datos leídos, si los hay
   }
-  updateIncUI();
+  updateIncUI(x);
 }
-function composeData(){ DATA = state.incMulti ? BASE.concat(MULTI) : BASE.slice(); }
-function updateIncUI(){
-  const w = document.getElementById('incWrap'), cb = document.getElementById('incMulti'), info = document.getElementById('incInfo');
-  const ok = MULTI.length > 0;
-  cb.disabled = !ok; cb.checked = ok && state.incMulti;
-  w.classList.toggle('disabled', !ok); w.classList.toggle('on', ok && state.incMulti);
-  const nc = new Set(MULTI.map(d=>d.campo)).size;
-  info.textContent = ok ? `(${nc} campos · ${MULTI.length} filas)` : '(no disponible)';
-  w.title = ok ? 'Suma los datos de la pestaña «'+MULTI_SHEET+'» de la Google Sheet'
-               : 'No se pudo leer la pestaña «'+MULTI_SHEET+'»' + (multiErr ? ': ' + multiErr : '');
+async function loadMulti(){ await Promise.all(EXTRAS.map(loadExtra)); }
+function composeData(){ DATA = BASE.concat(...EXTRAS.filter(x=>state[x.key]).map(x=>x.rows)); }
+function allRows(){ return BASE.concat(...EXTRAS.map(x=>x.rows)); }
+function updateIncUI(x){
+  const w = document.getElementById('inc-'+x.id), cb = w.querySelector('input'), info = w.querySelector('small');
+  const ok = x.rows.length > 0;
+  cb.disabled = !ok; cb.checked = ok && state[x.key];
+  w.classList.toggle('disabled', !ok); w.classList.toggle('on', ok && state[x.key]);
+  const nc = new Set(x.rows.map(d=>d.campo)).size;
+  info.textContent = ok ? `(${nc} campos · ${x.rows.length} filas)` : '(no disponible)';
+  w.title = ok ? 'Suma los datos de la pestaña «'+x.sheet+'» de la Google Sheet'
+               : 'No se pudo leer la pestaña «'+x.sheet+'»' + (x.err ? ': ' + x.err : '');
 }
 function setSync(kind, txt, tip){
   document.getElementById('sync').title = tip || '';
@@ -546,7 +563,7 @@ function setSync(kind, txt, tip){
 function prepare(){
   VARS = [...new Set(DATA.map(d=>d.sem).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
   // colores estables: se asignan sobre todas las variedades (con y sin la pestaña de más de una variedad)
-  [...new Set(BASE.concat(MULTI).map(d=>d.sem).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es')).forEach((v,i)=> COLOR[v] = PALETTE[i % PALETTE.length]);
+  [...new Set(allRows().map(d=>d.sem).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es')).forEach((v,i)=> COLOR[v] = PALETTE[i % PALETTE.length]);
   const zm = new Map();
   DATA.forEach(d => { if (d.zona && !zm.has(zoneKey(d.zona))) zm.set(zoneKey(d.zona), d.zona); });
   ZONES = [...zm.values()];
@@ -853,7 +870,7 @@ function renderTable(){
   document.getElementById('tCount').textContent = `${nCampos} campos${nCampos!==f.length?' ('+f.length+' filas)':''} · ${nf0.format(a.has)} ha trilladas · ${nf0.format(a.rinde)} kg/ha promedio ponderado`;
   const head = '<thead><tr>' + COLS.map(c=>`<th class="${c.r?'r':''} ${k===c.k?'on':''}" data-k="${c.k}">${c.t}<span class="ar">${k===c.k?(dir>0?'▲':'▼'):'↕'}</span></th>`).join('') + '</tr></thead>';
   const body = '<tbody>' + f.map(d=>`<tr>
-    <td class="campo">${esc(d.campo)}${d.multi?'<span class="tag-multi" title="Campo con más de una variedad">+1 VAR</span>':''}${top10.has(d.campo)?'<span class="tag-top">TOP 10</span>':''}</td>
+    <td class="campo">${esc(d.campo)}${d.extra?(x=>`<span class="${x.cls}" title="${x.tagTitle}">${x.tag}</span>`)(EXTRAS.find(x=>x.id===d.extra)):''}${top10.has(d.campo)?'<span class="tag-top">TOP 10</span>':''}</td>
     <td>${esc(d.loc)}</td><td>${esc(prettyZone(d.zona))}</td>
     <td class="r">${isNaN(d.netas)?'—':nf2.format(d.netas)}</td>
     <td class="r">${isNaN(d.has)?'—':nf2.format(d.has)}</td>
@@ -896,12 +913,14 @@ document.getElementById('btnTheme').addEventListener('click',()=>{
 document.getElementById('btnSheet').href = SHEET_URL;
 document.getElementById('footLink').href = SHEET_URL;
 document.getElementById('btnRefresh').addEventListener('click',()=>load(true));
-document.getElementById('incMulti').addEventListener('change',e=>{
-  state.incMulti = e.target.checked;
-  try{ localStorage.setItem('tablero-incmulti', state.incMulti?'1':'0'); }catch(_){}
-  updateIncUI(); composeData(); prepare(); render();
+EXTRAS.forEach(x=>{
+  try{ state[x.key] = localStorage.getItem(x.store)==='1'; }catch(_){}
+  document.querySelector(`#inc-${x.id} input`).addEventListener('change',e=>{
+    state[x.key] = e.target.checked;
+    try{ localStorage.setItem(x.store, state[x.key]?'1':'0'); }catch(_){}
+    updateIncUI(x); composeData(); prepare(); render();
+  });
 });
-try{ state.incMulti = localStorage.getItem('tablero-incmulti')==='1'; }catch(_){}
 wireMS('msZona','zonas'); wireMS('msVar','vars'); wireMS('msTec','tecs'); wireMS('msCampo','campos');
 document.addEventListener('click',e=>{ if (openMS && !e.target.closest('.ms')){ openMS=null; renderFilters(); } });
 document.addEventListener('keydown',e=>{ if (e.key==='Escape' && openMS){ openMS=null; renderFilters(); } });
